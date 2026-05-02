@@ -1,0 +1,7 @@
+node_modules/
+build/
+.env
+app/.env
+app/build/
+firmware/medisync_firmware/config.h
+*.DS_Store

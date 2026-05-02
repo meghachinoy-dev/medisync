@@ -1,0 +1,46 @@
+MediSync Firmware — Required Arduino Libraries
+==============================================
+
+Install via Arduino IDE > Tools > Manage Libraries, or via Arduino CLI:
+
+1. FirebaseESP8266 by Mobizt
+   Version: >= 4.4.0
+   Install: arduino-cli lib install "Firebase ESP8266 Client"
+   Purpose: Read/write Firebase Realtime Database from NodeMCU
+
+2. RTClib by Adafruit
+   Version: >= 2.1.1
+   Install: arduino-cli lib install "RTClib"
+   Purpose: Interface with DS3231 real-time clock over I2C
+
+3. LiquidCrystal_I2C by Frank de Brabander
+   Version: >= 1.1.2
+   Install: arduino-cli lib install "LiquidCrystal I2C"
+   Purpose: Drive 16x2 LCD display over I2C (address 0x27)
+
+4. ArduinoJson by Benoit Blanchon
+   Version: >= 6.21.0
+   Install: arduino-cli lib install "ArduinoJson"
+   Purpose: Parse JSON responses from Firebase
+
+5. ESP8266WiFi (Built-in — no separate install needed)
+   Purpose: WiFi connectivity on NodeMCU / ESP8266
+
+6. Servo (Built-in — no separate install needed)
+   Purpose: PWM control of SG90 servo motors
+
+==============================================
+Board Setup:
+1. Add ESP8266 board URL in Arduino IDE preferences:
+   http://arduino.esp8266.com/stable/package_esp8266com_index.json
+2. Install "esp8266 by ESP8266 Community" in Boards Manager
+3. Select Board: NodeMCU 1.0 (ESP-12E Module)
+4. Upload Speed: 115200
+5. Flash Size: 4MB (FS:2MB, OTA:~1019KB)
+
+==============================================
+Compilation Notes:
+- Set partition scheme to "NodeMCU 1.0" default
+- Ensure config.h has valid WiFi credentials before flashing
+- DO NOT commit config.h with real credentials (add to .gitignore)
+- Serial monitor baud rate: 115200

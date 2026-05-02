@@ -1,0 +1,92 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "medicines": {
+      ".read": true,
+      ".write": true,
+      "$medicineId": {
+        ".validate": "newData.hasChildren(['name', 'dosage', 'compartmentNumber', 'scheduleDays', 'doseTimes'])",
+        "compartmentNumber": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 6"
+        },
+        "scheduleDays": {
+          ".validate": "newData.isString() || newData.hasChildren()"
+        }
+      }
+    },
+
+    "dose_logs": {
+      ".read": true,
+      ".write": true,
+      "$date": {
+        "$logId": {
+          ".validate": "newData.hasChildren(['medicineId', 'scheduledTime', 'status'])",
+          "status": {
+            ".validate": "newData.isString() && (newData.val() === 'taken' || newData.val() === 'missed' || newData.val() === 'pending' || newData.val() === 'upcoming')"
+          }
+        }
+      }
+    },
+
+    "hardware_status": {
+      ".read": true,
+      ".write": true
+    },
+
+    "compartments": {
+      ".read": true,
+      ".write": true,
+      "$number": {
+        "pillsRemaining": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'OK' || newData.val() === 'LOW' || newData.val() === 'EMPTY' || newData.val() === 'UNASSIGNED')"
+        }
+      }
+    },
+
+    "alerts": {
+      ".read": true,
+      ".write": true,
+      "$alertId": {
+        ".validate": "newData.hasChildren(['type', 'severity', 'message', 'createdAt'])",
+        "severity": {
+          ".validate": "newData.isString() && (newData.val() === 'critical' || newData.val() === 'warning' || newData.val() === 'info')"
+        }
+      }
+    },
+
+    "ai_rules": {
+      ".read": true,
+      ".write": true,
+      "$ruleId": {
+        ".validate": "newData.hasChildren(['patternType', 'confidence'])",
+        "confidence": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+        }
+      }
+    },
+
+    "hardware_commands": {
+      ".read": true,
+      ".write": true,
+      "schedule_update": {
+        ".validate": "newData.isBoolean()"
+      },
+      "force_dispense": {
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+      },
+      "lcd_message": {
+        ".validate": "newData.isString() && newData.val().length <= 32"
+      }
+    },
+
+    "schedule": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
