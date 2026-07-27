@@ -87,19 +87,24 @@ void handleDispense(int idx) {
   // Dispense
   bool servoOk = servo_dispense(e.compartment);
 
-  // Check IR sensor for pill confirmation
+  // Check IR sensor for pill confirmation. Only IR_SENSOR_COMPARTMENT has a
+  // sensor wired on this build — elsewhere we trust the servo and record the
+  // dose as unconfirmed rather than falsely logging it as missed.
   delay(300);   // Brief settle time for pill to fall
-  bool irConfirmed = sensor_pill_detected(e.compartment);
+  bool hasIR       = sensor_has_ir(e.compartment);
+  bool irConfirmed = hasIR && sensor_pill_detected(e.compartment);
 
   const char* logStatus;
-  if (servoOk && irConfirmed) {
+  if (servoOk && (irConfirmed || !hasIR)) {
     sensor_decrement_count(e.compartment);
     lcd_show_taken();
     logStatus = "taken";
     lastDispenseEpoch = time(nullptr);
-    Serial.print(F("[Main] Dose confirmed: "));
-    Serial.println(e.medicineName);
-  } else if (servoOk && !irConfirmed) {
+    Serial.print(F("[Main] Dose dispensed: "));
+    Serial.print(e.medicineName);
+    Serial.println(hasIR ? F(" (IR confirmed)")
+                         : F(" (unconfirmed — no IR sensor on this compartment)"));
+  } else if (servoOk && hasIR && !irConfirmed) {
     // Servo moved but IR didn't detect — compartment may be empty
     logStatus = "missed";
     lcd_show_missed(e.medicineName);
@@ -121,7 +126,7 @@ void handleDispense(int idx) {
 
   // Low stock warning on LCD
   int remaining = sensor_get_count(e.compartment);
-  if (remaining > 0 && remaining <= 5) {
+  if (remaining > 0 && remaining <= LOW_STOCK_THRESHOLD) {
     delay(2000);
     lcd_show_low_stock(e.compartment, remaining);
     ai_buzz_alert(2);
@@ -138,7 +143,7 @@ void uploadStatus() {
 
 // ─── Write all compartment counts to Firebase ─────────────────────────────────
 void writePillCounts() {
-  for (int c = 1; c <= 6; c++) {
+  for (int c = 1; c <= NUM_COMPARTMENTS; c++) {
     firebase_write_compartment(c, sensor_get_count(c), sensor_get_status(c));
   }
 }

@@ -52,79 +52,75 @@
 
 ### SG90 Servo Motors (×6, one per compartment)
 
-| Servo | Wire | → | NodeMCU Pin | Notes |
-|---|---|---|---|---|
-| Servo 1 (Comp 1) | Signal (Orange) | → | D5 (GPIO14) | PWM output |
-| Servo 1 | VCC (Red) | → | 5V rail | Do NOT power from NodeMCU 3V3 |
-| Servo 1 | GND (Brown) | → | GND | Common ground |
-| Servo 2 (Comp 2) | Signal | → | D6 (GPIO12) | PWM output |
-| Servo 2 | VCC | → | 5V rail | |
-| Servo 2 | GND | → | GND | |
-| Servo 3 (Comp 3) | Signal | → | D3 (GPIO0) | Boot pin — servo must be disconnected during flash |
-| Servo 3 | VCC | → | 5V rail | |
-| Servo 3 | GND | → | GND | |
-| Servo 4 (Comp 4) | Signal | → | D4 (GPIO2) | Boot pin — servo must be disconnected during flash |
-| Servo 4 | VCC | → | 5V rail | |
-| Servo 4 | GND | → | GND | |
-| Servo 5 (Comp 5) | Signal | → | D7 (GPIO13) | Free general PWM |
-| Servo 5 | VCC | → | 5V rail | |
-| Servo 5 | GND | → | GND | |
-| Servo 6 (Comp 6) | Signal | → | D8 (GPIO15) | Must have 10kΩ pull-down to GND |
-| Servo 6 | VCC | → | 5V rail | |
-| Servo 6 | GND | → | GND | |
+All six servos connect directly to NodeMCU GPIO. Only the **signal** line differs
+per servo — every servo's VCC (red) goes to the external 5V rail and GND (brown)
+to common ground.
 
-> **IMPORTANT**: Servo motors draw 250–700 mA each under load. Do NOT power all 6 from NodeMCU's 3.3V pin.  
-> Use an external 5V 3A supply with a common GND. Connect NodeMCU GND to the external supply GND.
+| Servo | Signal → NodeMCU Pin | GPIO | Notes |
+|---|---|---|---|
+| Servo 1 (Comp 1) | D5 | GPIO14 | Clean GPIO |
+| Servo 2 (Comp 2) | D6 | GPIO12 | Clean GPIO |
+| Servo 3 (Comp 3) | D7 | GPIO13 | Clean GPIO |
+| Servo 4 (Comp 4) | D3 | GPIO0 | Boot pin — HIGH at boot (internal pull-up); disconnect signal while flashing |
+| Servo 5 (Comp 5) | D4 | GPIO2 | Boot pin — HIGH at boot (internal pull-up, onboard LED); disconnect signal while flashing |
+| Servo 6 (Comp 6) | D8 | GPIO15 | Boot pin — LOW at boot; **requires 10kΩ pull-down to GND**; disconnect signal while flashing |
 
-> **Boot pins**: D3 (GPIO0) and D4 (GPIO2) must be HIGH on boot. Disconnect servos 3 & 4 signal wires when flashing firmware.
+> **Power**: Servo motors draw 250–700 mA each under load. Do NOT power any of
+> them from NodeMCU's 3.3V pin. Use an external 5V 3A supply and tie its GND to
+> the NodeMCU GND (common ground).
+
+> **Boot pins (comps 4–6)**: D3/D4 must be HIGH and D8 must be LOW at power-up.
+> An SG90 signal input is high-impedance so it won't fight the strapping, but
+> **disconnect the comp-4/5/6 signal wires whenever you flash firmware** — the
+> auto-reset/flash sequence toggles these pins. The D8 pull-down must stay in place.
 
 ---
 
-### IR Sensors (×6, one per compartment) via CD4051 Multiplexer
+### IR Sensor (×1, compartment 1 only)
 
-| Component | Pin | → | NodeMCU Pin | Notes |
-|---|---|---|---|---|
-| CD4051 MUX | VCC | → | 3V3 | |
-| CD4051 MUX | GND | → | GND | |
-| CD4051 MUX | INH | → | GND | Enable always |
-| CD4051 MUX | A (select bit 0) | → | D7 (GPIO13) | MUX_SEL_A |
-| CD4051 MUX | B (select bit 1) | → | D8 (GPIO15) | MUX_SEL_B |
-| CD4051 MUX | C (select bit 2) | → | GND | Only 4 channels used |
-| CD4051 MUX | COM OUT | → | A0 | Analog reading |
-| IR Sensor 1 OUT | → | CD4051 Y0 | Channel 0 = Compartment 1 |
-| IR Sensor 2 OUT | → | CD4051 Y1 | Channel 1 = Compartment 2 |
-| IR Sensor 3 OUT | → | CD4051 Y2 | Channel 2 = Compartment 3 |
-| IR Sensor 4 OUT | → | CD4051 Y3 | Channel 3 = Compartment 4 |
-| IR Sensor 5 OUT | → | CD4051 Y0 | Channel 0 (time-shared with Comp 1) |
-| IR Sensor 6 OUT | → | CD4051 Y1 | Channel 1 (time-shared with Comp 2) |
-| Each IR Sensor VCC | → | 3V3 | |
-| Each IR Sensor GND | → | GND | |
+The ESP8266 has a **single analog input (A0)**, so exactly one IR sensor can be
+read directly — it goes on compartment 1. Comps 2–6 dispense without sensor
+confirmation and the firmware logs those doses as "taken (unconfirmed)".
 
-> For a school project with ≤4 compartments active at once, direct connection to D-pins is simpler. The MUX is for the full 6-compartment version.
+| IR Sensor 1 Pin | → | NodeMCU Pin | Notes |
+|---|---|---|---|
+| OUT | → | A0 (ADC0) | LM393 comparator output; A0 sits near 0 or ~1023 |
+| VCC | → | 3V3 | |
+| GND | → | GND | Common ground |
+
+> **Threshold**: `IR_PILL_THRESHOLD = 512` in `config.h`. Below it = beam
+> interrupted = pill present in the drop path.
+
+> **Adding IR to more compartments** later needs a channel multiplexer (CD4051)
+> or an I2C ADC/expander, since A0 is the only native analog pin. Not part of the
+> current build.
 
 ---
 
 ### Active Buzzer
 
+Driven from **D0 (GPIO16)** — D8 is now servo 6. GPIO16 has no PWM, which is fine
+for a self-oscillating active buzzer that only needs HIGH/LOW.
+
 | Buzzer Pin | → | NodeMCU Pin | Notes |
 |---|---|---|---|
-| + (positive) | → | D8 (GPIO15) via NPN transistor | |
-| - (negative) | → | GND | |
+| + (positive) | → | 5V (through buzzer, low-side switched) | |
+| - (negative) | → | Collector of NPN transistor | |
 
-> Use a 2N2222 or BC547 NPN transistor to drive the buzzer:
-> - Base → D8 via 1kΩ resistor
-> - Collector → Buzzer (+)
+> Low-side switch with a BC547 (or 2N2222) NPN transistor:
+> - Base → D0 (GPIO16) via 1kΩ resistor
+> - Collector → Buzzer (−)
+> - Buzzer (+) → 5V
 > - Emitter → GND
-> - Buzzer other end → 5V
 
 ---
 
-### Status LEDs (optional)
+### Status LEDs — not available on this build
 
-| LED Color | Anode → | Resistor | → NodeMCU | Purpose |
-|---|---|---|---|---|
-| Green | → | 220Ω | → D0 (GPIO16) | WiFi/online status |
-| Red | → | 220Ω | → GND (inverted) | Error / offline |
+With 6 servos direct + I2C + IR + buzzer, **every usable GPIO is allocated**
+(D0 buzzer, D1/D2 I2C, D3–D8 servos, A0 IR), so there is no free pin for status
+LEDs. Online/offline state is shown on the LCD and mirrored to Firebase instead.
+Add-on LEDs would require offloading the servos to a PCA9685 to free up pins.
 
 ---
 

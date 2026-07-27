@@ -5,12 +5,15 @@
 #include <Servo.h>
 #include "config.h"
 
-// ─── Initialise all 6 servos ─────────────────────────────────────────────────
+// ─── Initialise every physically wired servo ─────────────────────────────────
 void servo_init();
+
+// ─── True if this compartment's servo is wired on the current build ──────────
+bool servo_is_wired(int compartment);
 
 // ─── Dispense one pill from the specified compartment (1–6) ──────────────────
 // Rotates servo to SERVO_OPEN_ANGLE, holds SERVO_HOLD_MS, returns to SERVO_CLOSE_ANGLE.
-// Returns true on success.
+// Returns false if the compartment is out of range or not wired on this build.
 bool servo_dispense(int compartment);
 
 // ─── Test sweep all servos in sequence (used during LED test command) ─────────
