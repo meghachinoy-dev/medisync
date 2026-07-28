@@ -100,17 +100,21 @@ Produces optimised files in `app/build/` ready for deployment to Netlify, Vercel
 3. Mount one SG90 servo at the bottom of each compartment
 4. Create a rotating disc or sliding gate mechanism attached to each servo horn
 5. Cut a small pill exit hole at the bottom front of each compartment
-6. Mount IR sensors pointing downward through the exit hole
+6. Mount the IR sensor (compartment 1 only) pointing downward through its exit hole
 
 ### Step 2: Electronics Wiring
 
-Follow the complete wiring table in `docs/circuit_diagram.md`.
+For a full step-by-step breadboard walkthrough (rail setup, assembly order, flash
+ritual, smoke test), see [`build_guide.md`](build_guide.md). The complete pin
+reference table is in [`circuit_diagram.md`](circuit_diagram.md).
 
 Key points:
 - Power servos from external 5V 3A supply, NOT from NodeMCU
 - Connect all GNDs together (NodeMCU + external supply)
 - Add 100µF capacitor on 5V rail near servos
 - DS3231 and LCD share the I2C bus (D1=SCL, D2=SDA)
+- Power the DS3231 and LCD backpack from NodeMCU **3V3**, not 5V — the shared I2C bus must stay at 3.3V (ESP8266 pins are not 5V-tolerant)
+- Buzzer is on **D0 (GPIO16)** via an NPN transistor; all 6 servo signals are on D3–D8
 
 ### Step 3: Test Each Servo
 

@@ -40,10 +40,20 @@
 
 | LCD Pin | → | NodeMCU Pin | Notes |
 |---|---|---|---|
-| VCC | → | VIN (5V) | LCD requires 5V |
+| VCC | → | 3V3 | Power the PCF8574 backpack from 3.3V — see note |
 | GND | → | GND | Common ground |
 | SDA | → | D2 (GPIO4) | I2C data — shared with RTC |
 | SCL | → | D1 (GPIO5) | I2C clock — shared with RTC |
+
+> **Power the LCD backpack from 3V3, not 5V.** The PCF8574's I2C pull-ups tie to
+> its own VCC. At 5V they pull SDA/SCL toward 5V, which is out of spec for the
+> ESP8266's 3.3V-rated GPIOs (they are **not** 5V-tolerant) and shares the bus
+> with the 3.3V DS3231. Running the whole bus at 3.3V keeps it consistent and safe.
+
+> **Contrast:** at 3.3V a 16×2 HD44780 can look dim. Turn the blue contrast pot on
+> the back of the backpack until the characters are crisp. If you specifically need
+> full 5V brightness, power VCC from 5V **and** add a bidirectional I2C level
+> shifter on SDA/SCL — do not connect a 5V-powered backpack straight to the ESP8266.
 
 > Default I2C address: 0x27. If display doesn't initialize, try 0x3F.  
 > I2C address can be found with an I2C scanner sketch.
@@ -129,9 +139,12 @@ Add-on LEDs would require offloading the servos to a PCA9685 to free up pins.
 ```
 USB 5V ──┬── NodeMCU VIN (powers NodeMCU)
          │
-         └── External 5V 3A supply ──┬── Servo VCC rail (all 6 servos)
-                                     └── LCD VCC
-                                     
+         └── External 5V 3A supply ──── Servo VCC rail (all 6 servos)
+
+NodeMCU 3V3 ──┬── LCD VCC (PCF8574 backpack)
+              ├── DS3231 RTC VCC
+              └── IR sensor 1 VCC
+
 Common GND: NodeMCU GND + External supply GND + All component GNDs
 ```
 

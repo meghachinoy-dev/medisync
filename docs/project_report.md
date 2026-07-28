@@ -294,12 +294,12 @@ Full pin mapping table is in `docs/circuit_diagram.md`. Key connections summary:
 
 | Module | Connection | NodeMCU Pins |
 |---|---|---|
-| DS3231 RTC | I2C | D1 (SCL), D2 (SDA) |
-| LCD 16×2 | I2C | D1 (SCL), D2 (SDA) |
-| Servo 1–6 | PWM Signal | D5, D6, D3, D4, D7, D8 |
+| DS3231 RTC | I2C (VCC from 3V3) | D1 (SCL), D2 (SDA) |
+| LCD 16×2 | I2C (VCC from 3V3) | D1 (SCL), D2 (SDA) |
+| Servo 1–6 signal | PWM signal | D5, D6, D7, D3, D4, D8 |
 | Servos VCC | 5V external supply | — |
-| IR Sensors | Via MUX to A0 | A0, D7, D8 |
-| Buzzer | Via NPN transistor | D8 (GPIO15) |
+| IR Sensor (comp 1 only) | Analog, no MUX | A0 |
+| Buzzer | Via NPN transistor | D0 (GPIO16) |
 
 ---
 
