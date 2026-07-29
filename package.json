@@ -1,0 +1,13 @@
+{
+  "name": "medisync-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Repo-level tooling for MediSync (Firebase CLI, deploy scripts). App lives in app/.",
+  "scripts": {
+    "deploy:rules": "firebase deploy --only database",
+    "firebase": "firebase"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.24.0"
+  }
+}
