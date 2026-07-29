@@ -19,6 +19,7 @@ function MedicineForm({ initial, onSave, onCancel, usedCompartments }) {
   const [form, setForm] = useState(initial || EMPTY_FORM);
   const [newTime, setNewTime] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const toggleDay = (idx) => {
     setForm((f) => ({
@@ -43,8 +44,14 @@ function MedicineForm({ initial, onSave, onCancel, usedCompartments }) {
     e.preventDefault();
     if (!form.name || form.doseTimes.length === 0 || form.scheduleDays.length === 0) return;
     setSaving(true);
-    await onSave(form);
-    setSaving(false);
+    setSaveError(null);
+    try {
+      await onSave(form);
+    } catch (err) {
+      setSaveError(err?.message || 'Failed to save. Check your connection and try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -158,6 +165,12 @@ function MedicineForm({ initial, onSave, onCancel, usedCompartments }) {
           </button>
         </div>
       </div>
+
+      {saveError && (
+        <div className="error-state" role="alert" style={{ marginBottom: 12 }}>
+          Couldn't save: {saveError}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
         <button type="submit" className="btn btn-primary" disabled={saving}>
