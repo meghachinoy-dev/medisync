@@ -208,8 +208,10 @@ Walk each row with your finger on the actual wire. Then check:
 1. **Unplug the signal wires of servos 4, 5, and 6** (D3, D4, D8). Leave their
    power wires in — only the orange signal lines come out.
 2. Leave the external 5V supply **OFF** for now; the NodeMCU powers from USB.
-3. Fill in `firmware/medisync_firmware/config.h` — `WIFI_SSID`, `WIFI_PASSWORD`
-   (Firebase host/auth are already set).
+3. Fill in `firmware/medisync_firmware/config.h` — `WIFI_SSID`, `WIFI_PASSWORD`,
+   and `FIREBASE_OWNER_UID` (the UID of the account that owns this dispenser — see
+   Part 2, Step 5 of [`setup_guide.md`](setup_guide.md)). Firebase host/auth are
+   already set.
 4. In Arduino IDE: Board = "NodeMCU 1.0 (ESP-12E Module)", correct COM port,
    Upload speed 115200. Install the libraries in
    [`libraries_required.txt`](../firmware/libraries_required.txt).

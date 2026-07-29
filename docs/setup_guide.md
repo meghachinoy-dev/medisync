@@ -18,23 +18,52 @@
 4. Start in **"Test mode"** (we'll add proper rules later)
 5. Copy your database URL: `https://medisync-XXXXX-default-rtdb.asia-south1.firebasedatabase.app`
 
-### Step 3: Get Firebase Config
+### Step 3: Enable Authentication (Email/Password)
+
+MediSync is multi-user — each account has its own private dashboard, medicines,
+logs, and hardware, so the app requires sign-in.
+
+1. In the left sidebar, click **"Build"** → **"Authentication"**
+2. Click **"Get started"** — this one-time step provisions Authentication and
+   **can only be done here in the console** (there is no API to bootstrap it)
+3. Open the **"Sign-in method"** tab → select **"Email/Password"**
+4. Toggle **Enable** → **Save**
+
+### Step 4: Get Firebase Config
 
 1. Click the gear icon → **"Project settings"**
 2. Scroll to **"Your apps"** → Click **"</>"** (Web app)
 3. Register app name: `medisync-web` → Click **"Register app"**
 4. Copy the `firebaseConfig` object values
 
-### Step 4: Apply Security Rules
+### Step 5: Apply Security Rules
 
+The rules in `firebase/database.rules.json` isolate each user's data under
+`/users/{uid}/…` — a signed-in user can only read and write their own subtree,
+and unauthenticated access is denied.
+
+**Option A — Firebase Console:**
 1. In Realtime Database, click **"Rules"** tab
 2. Replace the content with the contents of `firebase/database.rules.json`
 3. Click **"Publish"**
 
-### Step 5: Get Database Secret (for NodeMCU)
+**Option B — Firebase CLI (from the repo root, reproducible):**
+```bash
+npm install            # installs firebase-tools (first time only)
+npx firebase login     # one-time browser sign-in
+npm run deploy:rules   # deploys firebase/database.rules.json
+```
+`firebase.json` and `.firebaserc` are already committed and point at the rules
+file and project `medisync-120311`.
+
+### Step 6: Get Database Secret (for NodeMCU)
 
 1. **Project settings** → **"Service accounts"** tab
 2. Click **"Database secrets"** → Show → Copy the legacy secret
+
+> The legacy secret authenticates the NodeMCU as an admin, which **bypasses the
+> security rules** — that's how the device writes into its owner's
+> `/users/{uid}/…` subtree while the rules keep other users out.
 
 ---
 
@@ -79,9 +108,22 @@ REACT_APP_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
 npm start
 ```
 
-Opens at `http://localhost:3000`. If `.env` is not configured, it runs in Demo Mode with sample data.
+Opens at `http://localhost:3000`. If `.env` is not configured, it runs in Demo Mode with sample data (which skips login entirely).
 
-### Step 5: Build for Production (optional)
+### Step 5: Create Your Account
+
+With a real `.env`, the app opens on a **login screen**.
+
+1. Click **"Sign up"**, enter your name, email, and a password (6+ characters)
+2. You'll land on your own empty dashboard
+3. **Note your account's UID** — you'll need it for the hardware in Part 4.
+   Find it in Firebase Console → **Authentication** → **Users** → copy the
+   **User UID** of the account you just created.
+
+Every account is fully isolated: medicines, logs, schedule, and hardware all
+live under `/users/{your-uid}/…`.
+
+### Step 6: Build for Production (optional)
 
 ```bash
 npm run build
@@ -166,7 +208,17 @@ Open `firmware/medisync_firmware/config.h` and fill in:
 #define FIREBASE_HOST "medisync-xxxxx-default-rtdb.asia-south1.firebasedatabase.app"
 #define FIREBASE_AUTH "your-database-legacy-secret"
 #define DEVICE_ID     "MEDISYNC-001"
+
+// The Firebase Auth UID of the account that owns THIS dispenser (from Part 2,
+// Step 5). The device reads/writes only under /users/<this-uid>/…
+#define FIREBASE_OWNER_UID "paste-your-account-uid-here"
 ```
+
+> **Important:** `FIREBASE_OWNER_UID` must exactly match the UID of the account
+> you sign in with on the web app. If it doesn't, the dispenser and the app will
+> be reading/writing different subtrees — the device will dispense but nothing
+> will appear in your dashboard (and vice versa). `config.h` is gitignored, so
+> this value (like your WiFi password and DB secret) stays on your machine only.
 
 ### Step 5: Select Board & Port
 
@@ -205,7 +257,7 @@ You should see:
 
 ## Part 5: Adding Medicines (React App)
 
-1. Open the app at `http://localhost:3000`
+1. Open the app at `http://localhost:3000` and **sign in** with your account
 2. Click **"Medicines"** in the sidebar
 3. Click **"+ Add Medicine"**
 4. Fill in: Name, Dosage, Form, Compartment number, Days, Times
@@ -220,6 +272,9 @@ The app writes to Firebase. Within 30 seconds, the NodeMCU polls Firebase and lo
 | Problem | Solution |
 |---|---|
 | App shows "Demo Mode" | No `.env` file or wrong DATABASE_URL — check `.env` |
+| Signup fails: "Email/password sign-in is not enabled" | Enable it in Firebase Console → Authentication → Sign-in method (Part 1, Step 3) |
+| App shows "Firebase denied access" / `permission_denied` | Deploy the security rules (`npm run deploy:rules` or paste in console) and make sure you're signed in |
+| Device dispenses but nothing shows in the app | `FIREBASE_OWNER_UID` in `config.h` doesn't match your account's UID — fix it and re-flash |
 | LCD shows nothing | Check I2C address with scanner; try 0x3F instead of 0x27 |
 | RTC shows wrong time | Sketch uses compile time — upload and run immediately |
 | Servo twitches on boot | Add 100µF cap on 5V rail; external power supply needed |
