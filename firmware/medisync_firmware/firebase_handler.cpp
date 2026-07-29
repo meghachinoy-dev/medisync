@@ -25,7 +25,7 @@ bool firebase_connected() {
 int firebase_load_schedule(ScheduleEntry* entries, int maxEntries) {
   int count = 0;
 
-  if (!Firebase.getJSON(fbData, "/medicines")) {
+  if (!Firebase.getJSON(fbData, USER_BASE "/medicines")) {
     Serial.print(F("[Firebase] getJSON /medicines failed: "));
     Serial.println(fbData.errorReason());
     return 0;
@@ -85,12 +85,12 @@ int firebase_load_schedule(ScheduleEntry* entries, int maxEntries) {
 }
 
 bool firebase_check_schedule_update_flag() {
-  if (!Firebase.getBool(fbData, "/hardware_commands/schedule_update")) return false;
+  if (!Firebase.getBool(fbData, USER_BASE "/hardware_commands/schedule_update")) return false;
   return fbData.boolData();
 }
 
 void firebase_clear_schedule_update_flag() {
-  Firebase.setBool(fbData, "/hardware_commands/schedule_update", false);
+  Firebase.setBool(fbData, USER_BASE "/hardware_commands/schedule_update", false);
 }
 
 // ─── Dose logging ─────────────────────────────────────────────────────────────
@@ -106,8 +106,8 @@ void firebase_log_dose(int compartment, const char* medicineId,
   char logId[48];
   snprintf(logId, sizeof(logId), "hw_%ld", (long)now);
 
-  char path[80];
-  snprintf(path, sizeof(path), "/dose_logs/%s/%s", dateKey, logId);
+  char path[160];
+  snprintf(path, sizeof(path), USER_BASE "/dose_logs/%s/%s", dateKey, logId);
 
   StaticJsonDocument<256> doc;
   doc["medicineId"]         = medicineId;
@@ -144,7 +144,7 @@ void firebase_write_status(bool online, int batteryPct, int wifiRSSI,
   String payload;
   serializeJson(doc, payload);
 
-  if (!Firebase.setJSON(fbData, "/hardware_status", payload)) {
+  if (!Firebase.setJSON(fbData, USER_BASE "/hardware_status", payload)) {
     Serial.print(F("[Firebase] write_status failed: "));
     Serial.println(fbData.errorReason());
   }
@@ -152,11 +152,11 @@ void firebase_write_status(bool online, int batteryPct, int wifiRSSI,
 
 // ─── Compartment pill counts ──────────────────────────────────────────────────
 void firebase_write_compartment(int num, int pillsRemaining, const char* status) {
-  char path[32];
-  snprintf(path, sizeof(path), "/compartments/%d/pillsRemaining", num);
+  char path[128];
+  snprintf(path, sizeof(path), USER_BASE "/compartments/%d/pillsRemaining", num);
   Firebase.setInt(fbData, path, pillsRemaining);
 
-  snprintf(path, sizeof(path), "/compartments/%d/status", num);
+  snprintf(path, sizeof(path), USER_BASE "/compartments/%d/status", num);
   Firebase.setString(fbData, path, status);
 }
 
@@ -164,7 +164,7 @@ void firebase_write_compartment(int num, int pillsRemaining, const char* status)
 // Reads /ai_rules/ looking for an applied CONSECUTIVE_MISS rule for this medicine.
 // Returns the shiftMinutes value (0 if none found).
 int firebase_load_ai_shifts(const char* medicineId) {
-  if (!Firebase.getJSON(fbData, "/ai_rules")) return 0;
+  if (!Firebase.getJSON(fbData, USER_BASE "/ai_rules")) return 0;
 
   StaticJsonDocument<2048> doc;
   if (deserializeJson(doc, fbData.payload()) != DeserializationError::Ok) return 0;
@@ -185,11 +185,11 @@ int firebase_load_ai_shifts(const char* medicineId) {
 
 // ─── Force dispense command ───────────────────────────────────────────────────
 bool firebase_check_force_dispense(int* compartmentOut) {
-  if (!Firebase.getInt(fbData, "/hardware_commands/force_dispense")) return false;
+  if (!Firebase.getInt(fbData, USER_BASE "/hardware_commands/force_dispense")) return false;
   int comp = fbData.intData();
   if (comp >= 1 && comp <= 6) {
     *compartmentOut = comp;
-    Firebase.setInt(fbData, "/hardware_commands/force_dispense", 0);
+    Firebase.setInt(fbData, USER_BASE "/hardware_commands/force_dispense", 0);
     return true;
   }
   return false;
@@ -197,6 +197,6 @@ bool firebase_check_force_dispense(int* compartmentOut) {
 
 // ─── LCD override message ─────────────────────────────────────────────────────
 String firebase_get_lcd_message() {
-  if (!Firebase.getString(fbData, "/hardware_commands/lcd_message")) return "";
+  if (!Firebase.getString(fbData, USER_BASE "/hardware_commands/lcd_message")) return "";
   return fbData.stringData();
 }

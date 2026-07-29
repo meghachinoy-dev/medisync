@@ -10,8 +10,10 @@ const NAV = [
   { to: '/notifications', label: 'Alerts', icon: '🔔' },
 ];
 
-export default function Sidebar({ isDemo, hardwareStatus, alertCount }) {
+export default function Sidebar({ isDemo, hardwareStatus, alertCount, user, onLogout }) {
   const online = hardwareStatus?.online;
+  const displayName = user?.displayName || user?.email || 'Account';
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <aside className="sidebar">
@@ -41,6 +43,15 @@ export default function Sidebar({ isDemo, hardwareStatus, alertCount }) {
       </nav>
 
       <div className="sidebar-footer">
+        {user && (
+          <div className="sidebar-user">
+            <div className="sidebar-user-avatar">{initial}</div>
+            <div className="sidebar-user-info">
+              {user.displayName && <div className="sidebar-user-name">{user.displayName}</div>}
+              <div className="sidebar-user-email">{user.email}</div>
+            </div>
+          </div>
+        )}
         {isDemo && (
           <div className="demo-badge">
             <span>⚡</span> Demo Mode
@@ -52,6 +63,11 @@ export default function Sidebar({ isDemo, hardwareStatus, alertCount }) {
             ? `${hardwareStatus?.deviceId || 'MEDISYNC-001'} online`
             : 'Device offline'}
         </div>
+        {onLogout && !isDemo && (
+          <button className="sidebar-logout" onClick={onLogout} style={{ marginTop: 10 }}>
+            Sign out
+          </button>
+        )}
       </div>
     </aside>
   );

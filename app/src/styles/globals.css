@@ -351,6 +351,55 @@ body {
   display: flex; align-items: center; justify-content: center;
 }
 
+/* Auth / Login */
+.auth-page {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--gray-900) 0%, #0f2557 100%);
+}
+.auth-card {
+  background: #fff; border-radius: 16px; padding: 32px;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.30);
+}
+.auth-brand { text-align: center; margin-bottom: 24px; }
+.auth-brand h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--gray-900); }
+.auth-brand h1 span { color: var(--blue); }
+.auth-brand p { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+.auth-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; color: var(--gray-900); }
+.auth-subtitle { font-size: 13px; color: var(--gray-500); margin-bottom: 20px; }
+.auth-card .form-group { margin-bottom: 14px; }
+.auth-submit { width: 100%; justify-content: center; margin-top: 6px; }
+.auth-switch { text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 18px; }
+.auth-switch button {
+  background: none; border: none; color: var(--blue);
+  font-weight: 600; cursor: pointer; font-size: 13px; padding: 0;
+}
+.auth-switch button:hover { text-decoration: underline; }
+
+/* Sidebar user block */
+.sidebar-user {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.sidebar-user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; flex-shrink: 0; text-transform: uppercase;
+}
+.sidebar-user-info { min-width: 0; }
+.sidebar-user-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-user-email { font-size: 11px; color: var(--gray-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-logout {
+  width: 100%; background: rgba(255,255,255,0.06); color: var(--gray-300);
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 6px;
+  padding: 7px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: background 0.15s;
+}
+.sidebar-logout:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
 @media (max-width: 900px) {
   .grid-2 { grid-template-columns: 1fr; }
   .compartment-grid { grid-template-columns: repeat(2, 1fr); }

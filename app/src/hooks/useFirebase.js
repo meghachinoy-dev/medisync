@@ -9,7 +9,9 @@ import {
   demoAIRules,
 } from '../utils/demoData';
 
-export function useFirebaseData() {
+// All data is namespaced per user at /users/{uid}/… so each account has its own
+// medicines, logs, hardware, etc. Demo mode ignores uid and uses local fixtures.
+export function useFirebaseData(uid) {
   const [medicines, setMedicines] = useState(DEMO_MODE ? demoMedicines : {});
   const [compartments, setCompartments] = useState(DEMO_MODE ? demoCompartments : {});
   const [hardwareStatus, setHardwareStatus] = useState(DEMO_MODE ? demoHardwareStatus : null);
@@ -20,8 +22,21 @@ export function useFirebaseData() {
   const [error, setError] = useState(null);
   const [lastSync, setLastSync] = useState(DEMO_MODE ? Date.now() : null);
 
+  // Build a path scoped to the current user.
+  const userPath = useCallback((p) => `/users/${uid}${p}`, [uid]);
+
   useEffect(() => {
-    if (DEMO_MODE) return;
+    if (DEMO_MODE || !uid) return;
+
+    // Reset state when the signed-in user changes so data never leaks between accounts.
+    setMedicines({});
+    setCompartments({});
+    setHardwareStatus(null);
+    setDoseLogs({});
+    setAlerts({});
+    setAIRules({});
+    setError(null);
+    setLoading(true);
 
     const unsubs = [];
 
@@ -38,11 +53,11 @@ export function useFirebaseData() {
       }
     };
 
-    listen('/medicines', setMedicines);
-    listen('/compartments', setCompartments);
-    listen('/hardware_status', (v) => setHardwareStatus(v));
-    listen('/alerts', setAlerts);
-    listen('/ai_rules', setAIRules);
+    listen(userPath('/medicines'), setMedicines);
+    listen(userPath('/compartments'), setCompartments);
+    listen(userPath('/hardware_status'), (v) => setHardwareStatus(v));
+    listen(userPath('/alerts'), setAlerts);
+    listen(userPath('/ai_rules'), setAIRules);
 
     // Dose logs — last 30 days
     const today = new Date();
@@ -50,14 +65,14 @@ export function useFirebaseData() {
       const date = new Date(today);
       date.setDate(date.getDate() - d);
       const dateKey = date.toISOString().split('T')[0];
-      listen(`/dose_logs/${dateKey}`, (data) => {
+      listen(userPath(`/dose_logs/${dateKey}`), (data) => {
         setDoseLogs((prev) => ({ ...prev, [dateKey]: data }));
       });
     }
 
     setLoading(false);
     return () => unsubs.forEach((u) => typeof u === 'function' && u());
-  }, []);
+  }, [uid, userPath]);
 
   const addMedicine = useCallback(async (medicine) => {
     if (DEMO_MODE) {
@@ -65,22 +80,22 @@ export function useFirebaseData() {
       setMedicines((prev) => ({ ...prev, [id]: { ...medicine, id, addedAt: Date.now(), active: true } }));
       return id;
     }
-    const medicinesRef = ref(database, '/medicines');
+    const medicinesRef = ref(database, userPath('/medicines'));
     const newRef = push(medicinesRef);
     const id = newRef.key;
     await set(newRef, { ...medicine, id, addedAt: Date.now(), active: true });
-    await set(ref(database, '/hardware_commands/schedule_update'), true);
+    await set(ref(database, userPath('/hardware_commands/schedule_update')), true);
     return id;
-  }, []);
+  }, [userPath]);
 
   const updateMedicine = useCallback(async (id, updates) => {
     if (DEMO_MODE) {
       setMedicines((prev) => ({ ...prev, [id]: { ...prev[id], ...updates } }));
       return;
     }
-    await update(ref(database, `/medicines/${id}`), updates);
-    await set(ref(database, '/hardware_commands/schedule_update'), true);
-  }, []);
+    await update(ref(database, userPath(`/medicines/${id}`)), updates);
+    await set(ref(database, userPath('/hardware_commands/schedule_update')), true);
+  }, [userPath]);
 
   const deleteMedicine = useCallback(async (id) => {
     if (DEMO_MODE) {
@@ -91,25 +106,25 @@ export function useFirebaseData() {
       });
       return;
     }
-    await remove(ref(database, `/medicines/${id}`));
-    await set(ref(database, '/hardware_commands/schedule_update'), true);
-  }, []);
+    await remove(ref(database, userPath(`/medicines/${id}`)));
+    await set(ref(database, userPath('/hardware_commands/schedule_update')), true);
+  }, [userPath]);
 
   const markAlertRead = useCallback(async (alertId) => {
     if (DEMO_MODE) {
       setAlerts((prev) => ({ ...prev, [alertId]: { ...prev[alertId], read: true } }));
       return;
     }
-    await update(ref(database, `/alerts/${alertId}`), { read: true });
-  }, []);
+    await update(ref(database, userPath(`/alerts/${alertId}`)), { read: true });
+  }, [userPath]);
 
   const pushAIRule = useCallback(async (rule) => {
     if (DEMO_MODE) {
       setAIRules((prev) => ({ ...prev, [rule.id]: rule }));
       return;
     }
-    await set(ref(database, `/ai_rules/${rule.id}`), rule);
-  }, []);
+    await set(ref(database, userPath(`/ai_rules/${rule.id}`)), rule);
+  }, [userPath]);
 
   return {
     medicines,

@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, push, update, remove } from 'firebase/database';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY || 'demo-key',
@@ -15,10 +16,12 @@ const DEMO_MODE = !process.env.REACT_APP_FIREBASE_DATABASE_URL;
 
 let app = null;
 let database = null;
+let auth = null;
 
 if (!DEMO_MODE) {
   app = initializeApp(firebaseConfig);
   database = getDatabase(app);
+  auth = getAuth(app);
 }
 
-export { database, ref, onValue, set, push, update, remove, DEMO_MODE };
+export { database, auth, ref, onValue, set, push, update, remove, DEMO_MODE };
