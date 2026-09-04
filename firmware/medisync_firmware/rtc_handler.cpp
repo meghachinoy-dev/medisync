@@ -1,6 +1,7 @@
 #include "rtc_handler.h"
 #include "config.h"
 #include <time.h>
+#include <sys/time.h>   // settimeofday() on ESP8266
 
 static RTC_DS3231 rtc;
 

@@ -122,7 +122,9 @@ void firebase_log_dose(int compartment, const char* medicineId,
   String payload;
   serializeJson(doc, payload);
 
-  if (!Firebase.setJSON(fbData, path, payload)) {
+  FirebaseJson fbjson;
+  fbjson.setJsonData(payload);
+  if (!Firebase.setJSON(fbData, path, fbjson)) {
     Serial.print(F("[Firebase] log_dose failed: "));
     Serial.println(fbData.errorReason());
   }
@@ -144,7 +146,9 @@ void firebase_write_status(bool online, int batteryPct, int wifiRSSI,
   String payload;
   serializeJson(doc, payload);
 
-  if (!Firebase.setJSON(fbData, USER_BASE "/hardware_status", payload)) {
+  FirebaseJson fbjson;
+  fbjson.setJsonData(payload);
+  if (!Firebase.setJSON(fbData, USER_BASE "/hardware_status", fbjson)) {
     Serial.print(F("[Firebase] write_status failed: "));
     Serial.println(fbData.errorReason());
   }
