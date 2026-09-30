@@ -4,8 +4,14 @@
 #include <Arduino.h>
 #include <RTClib.h>
 
-// ─── Initialise DS3231 over I2C ───────────────────────────────────────────────
+// ─── Initialise DS3231 over I2C (non-fatal if absent — NTP is the fallback) ──
 bool rtc_init();
+
+// ─── True if the real time is known from ANY source (DS3231 or NTP) ──────────
+bool rtc_is_available();
+
+// ─── Sync the clock from NTP over WiFi (used when the DS3231 is absent) ──────
+void rtc_sync_ntp();
 
 // ─── Get current time as a DateTime object ────────────────────────────────────
 DateTime rtc_now();

@@ -27,6 +27,40 @@ static unsigned long lastSchedulePoll    = 0;
 static unsigned long lastPillCountWrite  = 0;
 static unsigned long lastDoseCheck       = 0;
 static unsigned long lastDispenseEpoch   = 0;
+static bool          firebaseReady       = false;   // set once Firebase is initialised
+
+// WiFi event handlers — keep these alive for the whole program so the ESP8266
+// keeps calling them. Used to print WHY the link drops (reason code) + IP events.
+static WiFiEventHandler _onDisconnect;
+static WiFiEventHandler _onGotIP;
+
+// ─── Scan visible networks (diagnostic) ──────────────────────────────────────
+// Prints every 2.4 GHz network the ESP8266 can actually see, with signal and
+// security type. If our SSID doesn't appear, it's a channel/range problem; if
+// it appears as WPA3/enterprise, the ESP8266 can't join it.
+void scanNetworks() {
+  Serial.println(F("[WiFi] Scanning visible networks..."));
+  int n = WiFi.scanNetworks();
+  if (n == 0) { Serial.println(F("[WiFi]   (none found)")); return; }
+  for (int i = 0; i < n; i++) {
+    Serial.print(F("[WiFi]   "));
+    Serial.print(WiFi.SSID(i));
+    Serial.print(F("  rssi="));
+    Serial.print(WiFi.RSSI(i));
+    Serial.print(F("  ch="));
+    Serial.print(WiFi.channel(i));
+    Serial.print(F("  enc="));
+    switch (WiFi.encryptionType(i)) {
+      case ENC_TYPE_NONE: Serial.println(F("OPEN")); break;
+      case ENC_TYPE_WEP:  Serial.println(F("WEP")); break;
+      case ENC_TYPE_TKIP: Serial.println(F("WPA")); break;
+      case ENC_TYPE_CCMP: Serial.println(F("WPA2")); break;
+      case ENC_TYPE_AUTO: Serial.println(F("WPA/WPA2")); break;
+      default:            Serial.println(WiFi.encryptionType(i)); break;  // unknown = maybe WPA3
+    }
+  }
+  WiFi.scanDelete();
+}
 
 // ─── WiFi connection ──────────────────────────────────────────────────────────
 void connectWiFi() {
@@ -34,7 +68,15 @@ void connectWiFi() {
   Serial.print(F("[WiFi] Connecting to "));
   Serial.println(WIFI_SSID);
 
-  WiFi.mode(WIFI_STA);
+  // Stability settings — these fix the "connects then drops" behaviour seen on
+  // phone hotspots, which kick clients that let their radio sleep:
+  WiFi.persistent(false);              // don't hammer flash with every begin()
+  WiFi.mode(WIFI_STA);                 // station only, never AP
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);  // KEY: keep the radio awake so the AP won't drop us
+  WiFi.setAutoReconnect(true);         // auto re-associate if the link blips
+  WiFi.setOutputPower(20.5);           // max TX power — helps a weak/marginal signal
+  WiFi.hostname("MediSync");
+
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int attempts = 0;
@@ -148,14 +190,41 @@ void writePillCounts() {
   }
 }
 
+// ─── Initialise Firebase once WiFi is up ──────────────────────────────────────
+// Safe to call every loop; it only does the work once, the first time WiFi is
+// connected. This decouples Firebase init from setup() timing.
+void ensureBackendReady() {
+  if (firebaseReady) return;
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  // WiFi is up — if the DS3231 wasn't found, get the real time from NTP now.
+  rtc_sync_ntp();
+
+  firebase_init();
+  delay(1000);
+  loadSchedule();
+  uploadStatus();
+  writePillCounts();
+  firebaseReady = true;
+  Serial.println(F("[Main] Firebase ready — status uploaded"));
+}
+
 // ─── Arduino setup ────────────────────────────────────────────────────────────
 void setup() {
   Serial.begin(115200);
-  Serial.println(F("\n[MediSync] Booting v2.1.4"));
+  // Give the USB-serial link ~2.5s to re-sync after the auto-reset so the early
+  // boot diagnostics (I2C scan, LCD status) are actually captured by the monitor.
+  delay(2500);
+  Serial.println(F("\n\n===== [MediSync] Booting v2.1.4 ====="));
 
   // Buzzer
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
+
+  // I2C bus first, with a timeout so a stuck device can't freeze boot,
+  // then scan so the log shows exactly what's connected (LCD 0x27, RTC 0x68).
+  i2c_bus_begin();
+  i2c_scan();
 
   // Subsystem init
   lcd_init();
@@ -164,19 +233,29 @@ void setup() {
 
   bool rtcOk = rtc_init();
   if (!rtcOk) {
-    lcd_show_message("RTC ERROR!      ", "Check I2C wiring");
-    Serial.println(F("[Main] RTC failed — time-based dispensing unavailable"));
+    // Not fatal: NTP will set the clock once WiFi connects (see ensureBackendReady).
+    lcd_show_message("No RTC - using  ", "internet time   ");
+    Serial.println(F("[Main] No DS3231 — falling back to NTP once WiFi is up"));
   }
 
+  // Register WiFi diagnostics BEFORE connecting so we capture every drop reason.
+  _onDisconnect = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& e) {
+    Serial.print(F("[WiFi] DROP — reason code "));
+    Serial.println(e.reason);   // 200/201=beacon/no-AP(signal/power), 15=bad password, 4=assoc-expire
+  });
+  _onGotIP = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& e) {
+    Serial.print(F("[WiFi] Got IP: "));
+    Serial.println(e.ip);
+  });
+
+  WiFi.mode(WIFI_STA);   // needed before scanning
+  scanNetworks();        // show what the ESP8266 can actually see
   connectWiFi();
 
-  if (WiFi.status() == WL_CONNECTED) {
-    firebase_init();
-    delay(1000);
-    loadSchedule();
-    uploadStatus();
-    writePillCounts();
-  }
+  // Initialise Firebase now if WiFi came up; otherwise the loop will do it as
+  // soon as WiFi connects (fixes "authentication was not initialized" when the
+  // first connection attempt fails during setup).
+  ensureBackendReady();
 
   // Startup beep
   ai_buzz_alert(1);
@@ -199,6 +278,9 @@ void loop() {
     connectWiFi();
     return;
   }
+
+  // ── 1b. Bring Firebase up the first time WiFi is connected ────────────────
+  ensureBackendReady();
 
   // ── 2. Schedule update polling (every 30s) ────────────────────────────────
   if (now - lastSchedulePoll >= SCHEDULE_POLL_INTERVAL_MS) {

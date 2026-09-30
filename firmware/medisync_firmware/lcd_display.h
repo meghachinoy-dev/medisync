@@ -5,7 +5,14 @@
 #include <LiquidCrystal_I2C.h>
 #include "config.h"
 
-// ─── Initialise 16x2 I2C LCD ─────────────────────────────────────────────────
+// ─── Prepare the shared I2C bus (call once, before any I2C device init) ──────
+// Sets a clock-stretch timeout so a stuck device can't hang the sketch.
+void i2c_bus_begin();
+
+// ─── Scan and print all responding I2C addresses (diagnostic) ────────────────
+void i2c_scan();
+
+// ─── Initialise 16x2 I2C LCD (probes first; skips safely if absent) ──────────
 void lcd_init();
 
 // ─── Show medicine due alert ──────────────────────────────────────────────────

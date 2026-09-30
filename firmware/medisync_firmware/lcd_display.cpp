@@ -1,9 +1,40 @@
 #include "lcd_display.h"
+#include <Wire.h>
 
 static LiquidCrystal_I2C lcd(LCD_I2C_ADDR, LCD_COLS, LCD_ROWS);
+static bool lcdPresent = false;
+
+// Prepare the shared I2C bus once, with a clock-stretch timeout so a stuck or
+// slow device can NEVER hang the sketch forever (root cause of the boot freeze).
+void i2c_bus_begin() {
+  Wire.begin();                     // NodeMCU defaults: SDA=GPIO4(D2), SCL=GPIO5(D1)
+  Wire.setClockStretchLimit(1500);  // microseconds; bail out instead of hanging
+}
+
+// Print every address that ACKs on the I2C bus. Purely diagnostic.
+void i2c_scan() {
+  Serial.println(F("[I2C] Scanning bus..."));
+  int found = 0;
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+      Serial.print(F("[I2C]   device at 0x"));
+      Serial.println(addr, HEX);
+      found++;
+    }
+  }
+  if (found == 0) Serial.println(F("[I2C]   NONE found — check SDA/SCL/power/pull-ups"));
+}
+
+// Return true if a device ACKs at the given address.
+static bool i2c_present(uint8_t addr) {
+  Wire.beginTransmission(addr);
+  return Wire.endTransmission() == 0;
+}
 
 // Helper: write two padded lines
 static void lcd_write(const char* l1, const char* l2) {
+  if (!lcdPresent) return;   // no display wired — skip silently
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print(l1);
@@ -12,6 +43,16 @@ static void lcd_write(const char* l1, const char* l2) {
 }
 
 void lcd_init() {
+  // Probe first — if nothing ACKs at the LCD address, skip lcd.init() entirely
+  // so a missing/faulty display can never freeze the boot.
+  if (!i2c_present(LCD_I2C_ADDR)) {
+    lcdPresent = false;
+    Serial.print(F("[LCD] not found at 0x"));
+    Serial.print(LCD_I2C_ADDR, HEX);
+    Serial.println(F(" — skipping (device will still run headless)"));
+    return;
+  }
+  lcdPresent = true;
   lcd.init();
   lcd.backlight();
   lcd_write("  MediSync IoT  ", "  Initialising  ");

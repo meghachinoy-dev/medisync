@@ -9,10 +9,19 @@ void firebase_init() {
   fbConfig.signer.tokens.legacy_token = FIREBASE_AUTH;
   Firebase.begin(&fbConfig, &fbAuth);
   Firebase.reconnectWiFi(true);
+
+  // Shrink the BearSSL buffers so the TLS handshake fits in the ESP8266's tiny
+  // heap. Default buffers exhaust RAM after the first connection, causing
+  // "Failed to initialize the SSL layer" / "SSL internals timed out".
+  fbData.setBSSLBufferSize(1024, 1024);   // rx, tx bytes (valid 512..16384)
+  fbData.setResponseSize(2048);           // cap incoming payload buffer
+
   // Increase stream timeout to reduce disconnections on slow WiFi
   Firebase.setReadTimeout(fbData, 1000 * 60);
   Firebase.setwriteSizeLimit(fbData, "tiny");
-  Serial.println(F("[Firebase] Initialised"));
+
+  Serial.print(F("[Firebase] Initialised — free heap: "));
+  Serial.println(ESP.getFreeHeap());
 }
 
 bool firebase_connected() {
@@ -117,7 +126,7 @@ void firebase_log_dose(int compartment, const char* medicineId,
   doc["dispensedByHardware"] = true;
   doc["confirmedByIR"]      = irConfirmed;
   doc["pillsRemaining"]     = pillsRemaining;
-  doc["timestamp"]          = (long)now * 1000L;
+  doc["timestamp"]          = (int64_t)now * 1000LL;   // 64-bit: ms epoch overflows 32-bit long
 
   String payload;
   serializeJson(doc, payload);
@@ -136,11 +145,11 @@ void firebase_write_status(bool online, int batteryPct, int wifiRSSI,
   StaticJsonDocument<256> doc;
   doc["deviceId"]        = DEVICE_ID;
   doc["online"]          = online;
-  doc["lastSeen"]        = (long)time(nullptr) * 1000L;
+  doc["lastSeen"]        = (int64_t)time(nullptr) * 1000LL;   // 64-bit ms epoch
   doc["batteryPercent"]  = batteryPct;
   doc["wifiSSID"]        = WIFI_SSID;
   doc["wifiStrength"]    = wifiRSSI;
-  doc["lastDispenseTime"] = (long)lastDispenseEpoch * 1000L;
+  doc["lastDispenseTime"] = (int64_t)lastDispenseEpoch * 1000LL;   // 64-bit ms epoch
   doc["firmwareVersion"] = FIRMWARE_VER;
 
   String payload;
