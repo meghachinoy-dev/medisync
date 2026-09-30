@@ -9,6 +9,11 @@ import {
   demoAIRules,
 } from '../utils/demoData';
 
+// The device pushes a heartbeat (lastSeen) every 60s. If we haven't heard from
+// it within this window, treat it as offline — the firmware can't write
+// online:false when it's unplugged or loses power, so we infer it from staleness.
+const HEARTBEAT_STALE_MS = 150000; // 2.5 min ≈ 2 missed 60s heartbeats
+
 // All data is namespaced per user at /users/{uid}/… so each account has its own
 // medicines, logs, hardware, etc. Demo mode ignores uid and uses local fixtures.
 export function useFirebaseData(uid) {
@@ -21,9 +26,29 @@ export function useFirebaseData(uid) {
   const [loading, setLoading] = useState(!DEMO_MODE);
   const [error, setError] = useState(null);
   const [lastSync, setLastSync] = useState(DEMO_MODE ? Date.now() : null);
+  // Ticks every 20s so the online/offline check below re-runs even when the
+  // device has gone silent (no Firebase update arrives to trigger a re-render).
+  const [now, setNow] = useState(Date.now());
 
   // Build a path scoped to the current user.
   const userPath = useCallback((p) => `/users/${uid}${p}`, [uid]);
+
+  useEffect(() => {
+    if (DEMO_MODE) return;
+    const id = setInterval(() => setNow(Date.now()), 20000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Overlay a staleness-aware `online`: true only if the raw flag is set AND the
+  // last heartbeat is recent. A powered-off device stops updating lastSeen, so it
+  // flips to offline within HEARTBEAT_STALE_MS instead of showing online forever.
+  const hardwareStatusView = (() => {
+    if (DEMO_MODE) return hardwareStatus;
+    if (!hardwareStatus || typeof hardwareStatus !== 'object') return hardwareStatus;
+    const lastSeen = Number(hardwareStatus.lastSeen) || 0;
+    const fresh = lastSeen > 0 && now - lastSeen < HEARTBEAT_STALE_MS;
+    return { ...hardwareStatus, online: Boolean(hardwareStatus.online) && fresh };
+  })();
 
   useEffect(() => {
     if (DEMO_MODE || !uid) return;
@@ -129,7 +154,7 @@ export function useFirebaseData(uid) {
   return {
     medicines,
     compartments,
-    hardwareStatus,
+    hardwareStatus: hardwareStatusView,
     doseLogs,
     alerts,
     aiRules,
